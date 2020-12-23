@@ -1,0 +1,4 @@
+name: Sonar-Scanner action
+description: Runs sonar-scanner, submits analysis results and polls the quality gate status
+runs:
+  using: composite
