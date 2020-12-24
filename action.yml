@@ -48,4 +48,5 @@ runs:
         PROJECT_FILE_LOCATION: ${{ inputs.project-file-location }}
         SOURCES_MOUNT_POINT: ${{ inputs.sources-mount-point }}
         SOURCES_LOCATION: ${{ inputs.sources-location }}
+      working-directory: ${{ github.action_path }}
       run: ${{ github.action_path }}/action-entrypoint.sh
