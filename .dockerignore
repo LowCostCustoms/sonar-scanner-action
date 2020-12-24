@@ -1,6 +1,10 @@
 Dockerfile
 .dockerignore
 .git
+.gitignore
 .github
 .vscode
 .idea
+bin
+action-entrypoint.sh
+action.yml

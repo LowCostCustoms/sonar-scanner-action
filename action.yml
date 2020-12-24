@@ -1,4 +1,51 @@
 name: Sonar-Scanner action
+author: LowCostCustoms
 description: Runs sonar-scanner, submits analysis results and polls the quality gate status
+inputs:
+  image:
+    description: Sonar-Scanner image name
+    required: false
+    default: "sonarsource/sonar-scanner-cli:latest"
+  wait-for-quality-gate:
+    description: Wait for quality gate (true/false/1/0)
+    required: false
+    default: "true"
+  quality-gate-wait-timeout:
+    description: Quality Gate wait timeout (2m/2s/...)
+    required: false
+    default: "2m"
+  sonar-host-url:
+    description: SonarQube host url
+    required: false
+    default: ""
+  sonar-host-certificate:
+    description: SonarQube host certificate
+    required: false
+    default: ""
+  project-file-location:
+    description: Sonar-Scanner project file location
+    required: false
+    default: ""
+  sources-mount-point:
+    description: The place where directory with the project sources will be mounted in a sonar-scanner docker container
+    required: false
+    default: "/app"
+  sources-location:
+    description: The place where the project sources are located.
+    required: false
+    default: ${{ github.workspace }}
 runs:
   using: composite
+  steps:
+    - name: Run sonar-scanner
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        WAIT_FOR_QUALITY_GATE: ${{ inputs.wait-for-quality-gate }}
+        QUALITY_GATE_WAIT_TIMEOUT: ${{ inputs.quality-gate-wait-timeout }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+        SONAR_HOST_CERTIFICATE: ${{ inputs.sonar-host-certificate }}
+        PROJECT_FILE_LOCATION: ${{ inputs.project-file-location }}
+        SOURCES_MOUNT_POINT: ${{ inputs.sources-mount-point }}
+        SOURCES_LOCATION: ${{ inputs.sources-location }}
+      run: ${{ github.action_path }}/action-entrypoint.sh
