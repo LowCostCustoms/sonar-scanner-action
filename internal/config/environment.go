@@ -36,7 +36,11 @@ func GetEnvironment() (*Environment, error) {
 		os.Getenv(waitForQualityGateVarName),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"failed to parse boolean from %s: %s",
+			waitForQualityGateVarName,
+			err,
+		)
 	}
 
 	environment.WaitForQualityGate = waitForQualityGate
@@ -45,12 +49,17 @@ func GetEnvironment() (*Environment, error) {
 			os.Getenv(qualityGateWaitTimeoutVarName),
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"failed to parse duration from %s: %s",
+				qualityGateWaitTimeoutVarName,
+				err,
+			)
 		}
 
 		if timeout < 0 {
 			return nil, fmt.Errorf(
-				"quality gate wait timeout may not be negative",
+				"%s may not be negative",
+				qualityGateWaitTimeoutVarName,
 			)
 		}
 

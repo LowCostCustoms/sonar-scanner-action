@@ -18,7 +18,7 @@ const (
 
 func init() {
 	log.Formatter = new(prefixed.TextFormatter)
-	log.Level = logrus.DebugLevel
+	log.Level = logrus.InfoLevel
 }
 
 func main() {
@@ -29,11 +29,12 @@ func main() {
 
 	importHostCertificate(env)
 	runSonarScanner(env)
+	waitForQualityGate(env)
 }
 
 func importHostCertificate(env *config.Environment) {
 	if env.SonarHostCertificate != "" {
-		log.Info("Importing sonar host certificate ...")
+		log.Info("importing sonar host certificate ...")
 
 		err := sonarscanner.AddCACertificate(
 			context.Background(),
@@ -70,7 +71,7 @@ func runSonarScanner(env *config.Environment) {
 
 func waitForQualityGate(env *config.Environment) {
 	if env.WaitForQualityGate {
-		log.Info("waiting for the quality gate status ...")
+		log.Info("retrieving the task status ...")
 
 		url, err := sonarscanner.GetTaskURL(
 			path.Join(
@@ -79,13 +80,18 @@ func waitForQualityGate(env *config.Environment) {
 			),
 		)
 		if err != nil {
-			log.Fatalf("failed to read sonar-scanner metadata file: %s", err)
+			log.Fatalf(
+				"failed to read the sonar-scanner metadata file: %s",
+				err,
+			)
 		}
 
-		ctx, _ := context.WithTimeout(
+		ctx, cancel := context.WithTimeout(
 			context.Background(),
 			env.QualityGateWaitTimeout,
 		)
+		defer cancel()
+
 		status, err := sonarscanner.GetTaskStatus(
 			ctx,
 			log.WithField("prefix", "sonarqube"),

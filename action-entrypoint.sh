@@ -1,15 +1,16 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
-image_name="sonar-scanner-$(uudigen)"
-trap "docker image rm $image_name:latest || true"
+image_name="sonar-scanner-$(uuidgen)"
+trap "docker image rm $image_name || true" EXIT
 
-echo "::group::Build docker image"
-docker build -a BASE_IMAGE=$IMAGE -t $image_name .
+echo "::group::Building docker image"
+docker build --build-arg BASE_IMAGE=$IMAGE -t $image_name .
 echo "::endgroup::"
 
-echo "::group::Run action"
+echo "::group::Runing sonar-scanner"
 docker run \
     --rm \
+    -t \
     -e SONAR_HOST_URL \
     -e SONAR_HOST_CERTIFICATE \
     -e PROJECT_FILE_LOCATION \

@@ -1,37 +1,58 @@
 name: Sonar-Scanner action
 author: LowCostCustoms
-description: Runs sonar-scanner, submits analysis results and polls the quality gate status
+description: -|
+  Runs sonar-scanner, submits analysis results and retrieves the quality
+  gate status if needed.
 inputs:
   image:
-    description: Sonar-Scanner image name
+    description: -|
+      The name of an image containing sonar-scanner cli.
     required: false
     default: "sonarsource/sonar-scanner-cli:latest"
   wait-for-quality-gate:
-    description: Wait for quality gate (true/false/1/0)
+    description: -|
+      Specifies whether the SonarQube task status should be retrieved after the
+      analysis is finished. By default it's "true" which means that the action
+      will fail if task finishes with non-success status or doesn't finish in
+      time. However you can set this value to "false" to disable such a
+      behavior.
     required: false
     default: "true"
   quality-gate-wait-timeout:
-    description: Quality Gate wait timeout (2m/2s/...)
+    description: -|
+      Specifies the maximum amount of time - a non-negative number followed by
+      one of the suffixes "m", "s" or "h", which is considered maximum amount
+      of time during after which an unfinished SonarQube task is considered
+      failed.
     required: false
     default: "2m"
   sonar-host-url:
-    description: SonarQube host url
+    description: -|
+      The url by which the SonarQube server is accessible.
     required: false
     default: ""
   sonar-host-certificate:
-    description: SonarQube host certificate
+    description: -|
+      SonarQube host certificate.
     required: false
     default: ""
   project-file-location:
-    description: Sonar-Scanner project file location
+    description: -|
+      Sonar-Scanner project file location, relative to the sources-location
+      variable. By default this value is empty.
     required: false
     default: ""
   sources-mount-point:
-    description: The place where directory with the project sources will be mounted in a sonar-scanner docker container
+    description: -|
+      The place where directory with the project sources will be mounted in a
+      sonar-scanner docker container. By default the project sources you
+      specified in the sources-location input are mounted into the /app/ dir.
     required: false
     default: "/app"
   sources-location:
-    description: The place where the project sources are located.
+    description: -|
+      The place where the project sources are located. By default this input
+      points to the current github workspace root.
     required: false
     default: ${{ github.workspace }}
 runs:
