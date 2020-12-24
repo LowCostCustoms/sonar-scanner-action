@@ -26,7 +26,7 @@ func Run(entry *logrus.Entry, cmd *exec.Cmd) error {
 	}
 
 	go redirectOutput(entry, logrus.InfoLevel, stdout)
-	go redirectOutput(entry, logrus.ErrorLevel, stderr)
+	go redirectOutput(entry, logrus.WarnLevel, stderr)
 
 	return cmd.Wait()
 }
