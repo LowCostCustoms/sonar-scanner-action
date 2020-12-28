@@ -1,7 +1,8 @@
-package config
+package misc
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"os"
 	"strconv"
 	"time"
@@ -13,23 +14,24 @@ const (
 	projectFileLocationVarName    = "PROJECT_FILE_LOCATION"
 	waitForQualityGateVarName     = "WAIT_FOR_QUALITY_GATE"
 	qualityGateWaitTimeoutVarName = "QUALITY_GATE_WAIT_TIMEOUT"
+	logLevelVarName               = "LOG_LEVEL"
 )
 
-// Environment is a structure containing action environment variables.
 type Environment struct {
 	SonarHostURL           string
-	SonarHostCertificate   string
+	SonarHostCert          string
 	ProjectFileLocation    string
 	WaitForQualityGate     bool
+	LogLevel               logrus.Level
 	QualityGateWaitTimeout time.Duration
 }
 
-// GetEnvironment returns an Environment structure containing
 func GetEnvironment() (*Environment, error) {
 	environment := &Environment{
-		SonarHostURL:         os.Getenv(sonarHostURLVarName),
-		SonarHostCertificate: os.Getenv(sonarHostCertificateVarName),
-		ProjectFileLocation:  os.Getenv(projectFileLocationVarName),
+		SonarHostURL:        os.Getenv(sonarHostURLVarName),
+		SonarHostCert:       os.Getenv(sonarHostCertificateVarName),
+		ProjectFileLocation: os.Getenv(projectFileLocationVarName),
+		LogLevel:            logrus.InfoLevel,
 	}
 
 	waitForQualityGate, err := strconv.ParseBool(
@@ -56,7 +58,7 @@ func GetEnvironment() (*Environment, error) {
 			)
 		}
 
-		if timeout < 0 {
+		if timeout <= 0 {
 			return nil, fmt.Errorf(
 				"%s may not be negative",
 				qualityGateWaitTimeoutVarName,
@@ -64,6 +66,16 @@ func GetEnvironment() (*Environment, error) {
 		}
 
 		environment.QualityGateWaitTimeout = timeout
+	}
+
+	logLevelString := os.Getenv(logLevelVarName)
+	if logLevelString != "" {
+		logLevel, err := logrus.ParseLevel(logLevelString)
+		if err != nil {
+			return nil, err
+		}
+
+		environment.LogLevel = logLevel
 	}
 
 	return environment, nil

@@ -22,26 +22,6 @@ func (reader *testReader) Close() error {
 	return nil
 }
 
-func TestParseTaskStatus(t *testing.T) {
-	assertTaskStatusParsed(t, "PENDING", TaskStatusPending)
-	assertTaskStatusParsed(t, "IN_PROGRESS", TaskStatusInProgress)
-	assertTaskStatusParsed(t, "SUCCESS", TaskStatusSuccess)
-	assertTaskStatusParsed(t, "CANCELLED", TaskStatusCancelled)
-	assertTaskStatusParsed(t, "FAILED", TaskStatusFailed)
-
-	status, err := parseTaskStatus("UNDEFINED")
-
-	assert.NotNil(t, err)
-	assert.Equal(t, status, TaskStatusUndefined)
-}
-
-func assertTaskStatusParsed(t *testing.T, str string, status TaskStatus) {
-	actualStatus, err := parseTaskStatus(str)
-
-	assert.Nil(t, err)
-	assert.Equal(t, actualStatus, status)
-}
-
 func TestGetTaskUrlSucceeds(t *testing.T) {
 	reader := strings.NewReader(
 		`
@@ -50,7 +30,7 @@ func TestGetTaskUrlSucceeds(t *testing.T) {
         ceTaskUrl  = some url
         `,
 	)
-	url, err := getTaskURL(reader)
+	url, err := getTaskUrl(reader)
 
 	assert.Nil(t, err)
 	assert.Equal(t, url, "some url")
@@ -63,7 +43,7 @@ func TestGetTaskUrlFails(t *testing.T) {
         property2=2
         `,
 	)
-	url, err := getTaskURL(reader)
+	url, err := getTaskUrl(reader)
 
 	assert.NotNil(t, err)
 	assert.Equal(t, url, "")
