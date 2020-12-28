@@ -27,12 +27,12 @@ func main() {
 
 		err = misc.AddTrustedCertificate(
 			context.Background(),
-			log.WithField("context", "add-certificate"),
+			log.WithField("prefix", "add-certificate"),
 			env.SonarHostCert,
 			"",
 		)
 		if err != nil {
-			log.Fatalf("Failed to import certificate: %s")
+			log.Fatalf("Failed to import the sonar host certificate: %s")
 		}
 	}
 
