@@ -12,10 +12,12 @@ docker run \
     --rm \
     -t \
     -e SONAR_HOST_URL \
+    -e SONAR_HOST_CERT \
     -e PROJECT_FILE_LOCATION \
     -e WAIT_FOR_QUALITY_GATE \
     -e QUALITY_GATE_WAIT_TIMEOUT \
     -e LOG_LEVEL \
+    -e TLS_SKIP_VERIFY \
     -w "$SOURCES_MOUNT_POINT" \
     -v "$SOURCES_LOCATION:$SOURCES_MOUNT_POINT" \
     $image_name

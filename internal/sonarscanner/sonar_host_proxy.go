@@ -3,6 +3,7 @@ package sonarscanner
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -10,61 +11,61 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type sonarHostProxy struct {
-	listenAddress string
-	proxy         *httputil.ReverseProxy
-	logger        *logrus.Entry
+type sonarHostProxyFactory struct {
+	listenAddr   string
+	sonarHostUrl string
+	config       *tls.Config
+	log          *logrus.Entry
 }
 
-func newSonarHostProxy(
-	logger *logrus.Entry,
-	listenAddress string,
-	destination string,
-) (*sonarHostProxy, error) {
-	target, err := url.Parse(destination)
+type sonarHostProxy struct {
+	listenAddr string
+	log        *logrus.Entry
+	proxy      *httputil.ReverseProxy
+}
+
+func (f *sonarHostProxyFactory) new() (*sonarHostProxy, error) {
+	target, err := url.Parse(f.sonarHostUrl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse sonar host url: %s", err)
 	}
 
-	reverseProxy := httputil.NewSingleHostReverseProxy(target)
-	reverseProxy.Transport = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.Transport = &http.Transport{
+		TLSClientConfig: f.config,
 	}
 
 	return &sonarHostProxy{
-		logger:        logger,
-		listenAddress: listenAddress,
-		proxy:         reverseProxy,
+		listenAddr: f.listenAddr,
+		log:        f.log,
+		proxy:      proxy,
 	}, nil
 }
 
-func (proxy *sonarHostProxy) runWithContext(ctx context.Context) error {
-	handlerFunc := func(res http.ResponseWriter, req *http.Request) {
-		proxy.handleRequest(res, req)
-	}
+func (p *sonarHostProxy) serveWithContext(ctx context.Context) error {
+	p.log.Infof("Starting reverse proxy on %s ...", p.listenAddr)
+
 	server := &http.Server{
-		Addr:    proxy.listenAddress,
-		Handler: http.HandlerFunc(handlerFunc),
+		Addr: p.listenAddr,
+		Handler: http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			p.log.Debugf("Proxying request %s %s", req.Method, req.URL)
+			p.proxy.ServeHTTP(res, req)
+		}),
 	}
+
 	if err := server.ListenAndServe(); err != nil {
 		return err
 	}
 
-	defer server.Close()
-
 	select {
 	case <-ctx.Done():
+		p.log.Info("Stopping the reverse proxy ...")
+		if err := server.Close(); err != nil {
+			p.log.Warnf("Failed to stop the reverse proxy: %s", err)
+		} else {
+			p.log.Info("Reverse proxy stopped")
+		}
+
 		return nil
 	}
-}
-
-func (proxy *sonarHostProxy) handleRequest(
-	res http.ResponseWriter,
-	req *http.Request,
-) {
-	proxy.logger.Debugf("Redirecting %s %s.", req.Method, req.RequestURI)
-	proxy.proxy.ServeHTTP(res, req)
 }

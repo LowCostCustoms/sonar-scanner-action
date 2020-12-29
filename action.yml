@@ -31,6 +31,11 @@ inputs:
       The url by which the SonarQube server is accessible.
     required: false
     default: ""
+  sonar-host-cert:
+    description: -|
+      The PEM-encoded sonar host certificate if any.
+    required: false
+    default: ""
   project-file-location:
     description: -|
       Sonar-Scanner project file location, relative to the sources-location
@@ -56,6 +61,11 @@ inputs:
       info, warning or error.
     required: false
     default: info
+  tls-skip-verify:
+    description: -|
+      If true skips sonar host TLS certificate verification.
+    required: false
+    default: false
 runs:
   using: composite
   steps:
@@ -66,9 +76,11 @@ runs:
         WAIT_FOR_QUALITY_GATE: ${{ inputs.wait-for-quality-gate }}
         QUALITY_GATE_WAIT_TIMEOUT: ${{ inputs.quality-gate-wait-timeout }}
         SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+        SONAR_HOST_CERT: ${{ inputs.sonar-host-cert }}
         PROJECT_FILE_LOCATION: ${{ inputs.project-file-location }}
         SOURCES_MOUNT_POINT: ${{ inputs.sources-mount-point }}
         SOURCES_LOCATION: ${{ inputs.sources-location }}
         LOG_LEVEL: ${{ inputs.log-level }}
+        TLS_SKIP_VERIFY: ${{ inputs.tls-skip-verify }}
       working-directory: ${{ github.action_path }}
       run: ${{ github.action_path }}/action-entrypoint.sh

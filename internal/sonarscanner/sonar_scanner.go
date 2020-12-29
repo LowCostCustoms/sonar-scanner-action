@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -15,8 +16,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/LowCostCustoms/sonar-scanner-action/internal/misc"
+	"github.com/LowCostCustoms/sonar-scanner-action/internal/command"
 	"github.com/LowCostCustoms/sonar-scanner-action/internal/properties"
+
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 )
@@ -24,212 +26,193 @@ import (
 var QualityGateWaitTimeout = errors.New("quality gate wait timeout")
 
 const (
-	defaultWaitTimeout    = 2 * time.Second
-	defaultRequestTimeout = 5 * time.Second
+	defaultWaitTimeout         = 2 * time.Second
+	defaultRequestTimeout      = 5 * time.Second
+	defaultMetadataFileName    = "report-task.txt"
+	defaultScannerWorkingDir   = "/opt/sonar-scanner-action/"
+	defaultProjectFileLocation = "sonar-project.properties"
+	proxyListenAddr            = "localhost:6969"
 )
 
-const (
-	defaultProjetFileLocation = "sonar-project.properties"
-	proxyListenAddress        = "localhost:6969"
-)
-
-type RunConfig struct {
-	TlsSkipVerify       bool
+type RunFactory struct {
 	SonarHostUrl        string
+	SonarHostCert       string
 	ScannerWorkingDir   string
+	TlsSkipVerify       bool
 	MetadataFileName    string
 	ProjectFileLocation string
 	LogEntry            *logrus.Entry
 }
 
 type Run struct {
-	tlsSkipVerify       bool
 	sonarHostUrl        string
 	scannerWorkingDir   string
 	metadataFilePath    string
 	projectFileLocation string
+	tlsConfig           *tls.Config
 	log                 *logrus.Entry
 }
 
-func (config *RunConfig) NewRun() *Run {
-	metadataFileName := config.MetadataFileName
+func (c *RunFactory) NewRun() (*Run, error) {
+	metadataFileName := c.MetadataFileName
 	if metadataFileName == "" {
-		metadataFileName = "report-task.txt"
+		metadataFileName = defaultMetadataFileName
 	}
 
-	scannerWorkingDir := config.ScannerWorkingDir
+	scannerWorkingDir := c.ScannerWorkingDir
 	if scannerWorkingDir == "" {
-		scannerWorkingDir = "/opt/sonar-scanner-action/"
+		scannerWorkingDir = defaultScannerWorkingDir
+	}
+
+	projectFileLocation := c.ProjectFileLocation
+	if projectFileLocation == "" {
+		projectFileLocation = defaultProjectFileLocation
+	}
+
+	sonarHostUrl, err := c.getSonarHostUrl()
+	if err != nil {
+		return nil, err
+	}
+
+	tlsConfig, err := c.getTlsClientConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	return &Run{
-		tlsSkipVerify:     config.TlsSkipVerify,
-		sonarHostUrl:      config.SonarHostUrl,
-		scannerWorkingDir: config.ScannerWorkingDir,
-		metadataFilePath:  path.Join(scannerWorkingDir, metadataFileName),
-		log:               config.LogEntry,
-	}
+		sonarHostUrl:        sonarHostUrl,
+		scannerWorkingDir:   c.ScannerWorkingDir,
+		metadataFilePath:    path.Join(scannerWorkingDir, metadataFileName),
+		projectFileLocation: projectFileLocation,
+		tlsConfig:           tlsConfig,
+		log:                 c.LogEntry,
+	}, nil
 }
 
-func (run *Run) RunSonarScanner(ctx context.Context) error {
-	run.log.Debugf(
-		"Sonar-Scanner cli working directory: %s",
-		run.scannerWorkingDir,
-	)
-	run.log.Debugf(
-		"Sonar-Scanner cli metadata file path: %s",
-		run.metadataFilePath,
-	)
-
-	args := []string{
-		fmt.Sprintf(
-			"-Dsonar.working.directory=%s",
-			run.scannerWorkingDir,
-		),
-		fmt.Sprintf(
-			"-Dsonar.scanner.metadataFilePath=%s",
-			path.Join(run.scannerWorkingDir, run.metadataFilePath),
-		),
-		fmt.Sprintf(
-			"-Dsonar.host.url=http://%s",
-			proxyListenAddress,
-		),
-	}
-
-	if run.projectFileLocation != "" {
-		run.log.Debugf(
-			"Sonar-Scanner cli project file location: %s",
-			run.projectFileLocation,
-		)
-
-		args = append(
-			args,
-			fmt.Sprintf("-Dproject.settings=%s", run.projectFileLocation),
-		)
-	}
-
-	// Evaluate the sonar host url either from the configuration or from the
-	// project properties.
-	sonarHostUrl, err := run.getSonarHostUrl()
+func (c *RunFactory) getTlsClientConfig() (*tls.Config, error) {
+	certPool, err := x509.SystemCertPool()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to get the system-wide cert pool: %s", err)
 	}
 
-	// Run a reverse proxy and stop it upon the command is finished.
-	reverseProxyCtx, reverseProxyCancel := context.WithCancel(ctx)
-	defer reverseProxyCancel()
-	go run.runReverseProxy(
-		reverseProxyCtx,
-		run.log.WithField("prefix", "reverse-proxy"),
-		proxyListenAddress,
-		sonarHostUrl,
-	)
+	if c.SonarHostCert != "" {
+		if !certPool.AppendCertsFromPEM([]byte(c.SonarHostCert)) {
+			return nil, fmt.Errorf("failed to append the sonar host certificate to the cert pool")
+		}
+	}
 
-	cmd := exec.CommandContext(ctx, "sonar-scanner", args...)
-
-	return misc.RunCommand(
-		run.log.WithField("prefix", "sonar-scanner-cli"),
-		cmd,
-	)
+	return &tls.Config{
+		InsecureSkipVerify: c.TlsSkipVerify,
+		RootCAs:            certPool,
+	}, nil
 }
 
-func (run *Run) RetrieveLastAnalysisTaskStatus(
-	ctx context.Context,
-) (TaskStatus, error) {
-	run.log.Infof("Using metadata file %s", run.metadataFilePath)
-
-	url, err := getTaskUrlFromFile(run.metadataFilePath)
-	if err != nil {
-		return TaskStatusUndefined, err
+func (c *RunFactory) getSonarHostUrl() (string, error) {
+	if c.SonarHostUrl != "" {
+		return c.SonarHostUrl, nil
 	}
 
-	run.log.Infof("Using task result url %s", url)
-
-	return run.retrieveTaskStatus(ctx, url)
-}
-
-func (run *Run) getSonarHostUrl() (string, error) {
-	if run.sonarHostUrl != "" {
-		run.log.Debugf("Using sonar host url from env")
-		return run.sonarHostUrl, nil
-	}
-
-	projectFileLocation := run.projectFileLocation
-	if projectFileLocation == "" {
-		projectFileLocation = defaultProjetFileLocation
-	}
-
-	run.log.Debugf(
-		"Reading sonar host url from the project file '%s'",
-		projectFileLocation,
-	)
-
-	props, err := properties.ReadAllPropertiesFromFile(projectFileLocation)
+	propertiesMap, err := properties.ReadAllPropertiesFromFile(c.ProjectFileLocation)
 	if err != nil {
 		return "", err
 	}
 
-	sonarHostUrl := props["sonar.host.url"]
-	run.log.Debugf("Sonar host url is '%s'", sonarHostUrl)
-
+	sonarHostUrl := propertiesMap["sonar.host.url"]
 	if sonarHostUrl == "" {
-		return "", fmt.Errorf("sona host url is invalid")
+		return "", fmt.Errorf("could not infer the sonar host url")
 	}
 
 	return sonarHostUrl, nil
 }
 
-func (run *Run) runReverseProxy(
-	ctx context.Context,
-	logger *logrus.Entry,
-	listenAddress string,
-	sonarHostUrl string,
-) {
-	logger.Info("Starting a reverse proxy ...")
+func (r *Run) RunScanner(ctx context.Context) error {
+	proxyCtx, proxyCtxCancel := context.WithCancel(ctx)
+	defer proxyCtxCancel()
 
-	proxy, err := newSonarHostProxy(logger, listenAddress, sonarHostUrl)
-	if err != nil {
-		logger.Errorf("Failed to init a reverse proxy: %s", err)
-		return
+	if err := r.runReverseProxy(proxyCtx); err != nil {
+		return err
 	}
 
-	if err := proxy.runWithContext(ctx); err != nil {
-		logger.Errorf("Failed to run the reverse proxy: %s", err)
-		return
-	}
+	cmd := exec.CommandContext(ctx, "sonar-scanner", r.getSonarScannerArgs()...)
 
-	logger.Infof("Reverse proxy stopped.")
+	return command.Run(r.log.WithField("prefix", "sonar-scanner-cli"), cmd)
 }
 
-func (run *Run) retrieveTaskStatus(
-	ctx context.Context,
-	url string,
-) (TaskStatus, error) {
+func (r *Run) RetrieveLastAnalysisTaskStatus(ctx context.Context) (TaskStatus, error) {
+	r.log.Infof("Using metadata file %s", r.metadataFilePath)
+
+	url, err := getTaskUrlFromFile(r.metadataFilePath)
+	if err != nil {
+		return TaskStatusUndefined, err
+	}
+
+	r.log.Infof("Using task result url %s", url)
+
+	return r.retrieveTaskStatus(ctx, url)
+}
+
+func (r *Run) runReverseProxy(ctx context.Context) error {
+	proxyFactory := &sonarHostProxyFactory{
+		listenAddr:   proxyListenAddr,
+		config:       r.tlsConfig,
+		log:          r.log.WithField("prefix", "sonar-host-proxy"),
+		sonarHostUrl: r.sonarHostUrl,
+	}
+	proxy, err := proxyFactory.new()
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		if err := proxy.serveWithContext(ctx); err != nil {
+			r.log.Errorf("Failed to start a sonar host proxy: %s", err)
+		}
+	}()
+
+	return nil
+}
+
+func (r *Run) getSonarScannerArgs() []string {
+	r.log.Debugf("Sonar-Scanner cli working directory: %s", r.scannerWorkingDir)
+	r.log.Debugf("Sonar-Scanner cli metadata file path: %s", r.metadataFilePath)
+
+	args := []string{
+		fmt.Sprintf("-Dsonar.working.directory=%s", r.scannerWorkingDir),
+		fmt.Sprintf("-Dsonar.scanner.metadataFilePath=%s", path.Join(r.scannerWorkingDir, r.metadataFilePath)),
+		fmt.Sprintf("-Dsonar.host.url=http://%s", proxyListenAddr),
+	}
+
+	if r.projectFileLocation != "" {
+		r.log.Debugf("Sonar-Scanner cli project file location: %s", r.projectFileLocation)
+
+		args = append(args, fmt.Sprintf("-Dproject.settings=%s", r.projectFileLocation))
+	}
+
+	return args
+}
+
+func (r *Run) retrieveTaskStatus(ctx context.Context, url string) (TaskStatus, error) {
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: run.tlsSkipVerify,
-			},
+			TLSClientConfig: r.tlsConfig,
 		},
 		Timeout: defaultRequestTimeout,
 	}
 	for {
-		run.log.Debugf("Reading task status from the server")
+		r.log.Debugf("Reading task status from the server")
 
 		taskStatus, err := requestTaskStatus(ctx, client, url)
 		if err != nil {
 			return TaskStatusUndefined, err
 		}
 
-		run.log.Debugf("Task status returned in the response %s", taskStatus)
+		r.log.Debugf("Task status returned in the response %s", taskStatus)
 
-		if taskStatus == TaskStatusSuccess ||
-			taskStatus == TaskStatusCancelled ||
-			taskStatus == TaskStatusUndefined {
+		if taskStatus == TaskStatusSuccess || taskStatus == TaskStatusCancelled || taskStatus == TaskStatusUndefined {
 			return taskStatus, nil
 		}
 
-		run.log.Debugf("Waiting for %s before next poll", defaultWaitTimeout)
+		r.log.Debugf("Waiting for %s before next poll", defaultWaitTimeout)
 
 		select {
 		case <-time.After(defaultWaitTimeout):
@@ -265,11 +248,7 @@ func getTaskUrl(reader io.Reader) (string, error) {
 	return "", errors.New("metadata file doesn't contain task url")
 }
 
-func requestTaskStatus(
-	ctx context.Context,
-	client *http.Client,
-	url string,
-) (TaskStatus, error) {
+func requestTaskStatus(ctx context.Context, client *http.Client, url string) (TaskStatus, error) {
 	request, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return TaskStatusUndefined, err
@@ -291,18 +270,12 @@ func requestTaskStatus(
 
 func processTaskStatusResponse(response *http.Response) (TaskStatus, error) {
 	if response.StatusCode != http.StatusOK {
-		return TaskStatusUndefined, fmt.Errorf(
-			"unexpected response code %d",
-			response.StatusCode,
-		)
+		return TaskStatusUndefined, fmt.Errorf("unexpected response code %d", response.StatusCode)
 	}
 
 	contentType := response.Header.Get("content-type")
 	if contentType != "application/json" {
-		return TaskStatusUndefined, fmt.Errorf(
-			"unexpected response content-type '%s'",
-			contentType,
-		)
+		return TaskStatusUndefined, fmt.Errorf("unexpected response content-type '%s'", contentType)
 	}
 
 	responseBody, err := ioutil.ReadAll(response.Body)
