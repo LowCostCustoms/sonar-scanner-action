@@ -45,14 +45,18 @@ func main() {
 	sonarScannerRun := sonarScannerConfig.CreateRun()
 
 	log.Info("Running sonar-scanner-cli ...")
-	if err := sonarScannerRun.RunSonarScanner(context.Background()); err != nil {
+	err = sonarScannerRun.RunSonarScanner(context.Background())
+	if err != nil {
 		log.Fatalf("Failed to run sonar-scanner: %s", err)
 	}
 
 	if env.WaitForQualityGate {
 		log.Info("Retrieving the analysis task status ...")
 
-		ctx, cancel := context.WithTimeout(context.Background(), env.QualityGateWaitTimeout)
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			env.QualityGateWaitTimeout,
+		)
 		defer cancel()
 
 		status, err := sonarScannerRun.RetrieveLastAnalysisTaskStatus(ctx)

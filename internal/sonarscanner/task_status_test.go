@@ -2,8 +2,9 @@ package sonarscanner
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTaskStatusToString(t *testing.T) {
@@ -35,7 +36,11 @@ func TestParseTaskStatusInvalidInput(t *testing.T) {
 	assert.Equal(t, status, TaskStatusUndefined)
 }
 
-func assertTaskStatusParsedAs(t *testing.T, statusString string, expectedStatus TaskStatus) {
+func assertTaskStatusParsedAs(
+	t *testing.T,
+	statusString string,
+	expectedStatus TaskStatus,
+) {
 	status, err := parseTaskStatus(statusString)
 
 	assert.Nil(t, err)

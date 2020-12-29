@@ -6,9 +6,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/LowCostCustoms/sonar-scanner-action/internal/misc"
-	"github.com/sirupsen/logrus"
-	"github.com/tidwall/gjson"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -17,6 +14,10 @@ import (
 	"path"
 	"regexp"
 	"time"
+
+	"github.com/LowCostCustoms/sonar-scanner-action/internal/misc"
+	"github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
 )
 
 var QualityGateWaitTimeout = errors.New("quality gate wait timeout")
@@ -65,8 +66,14 @@ func (config *RunConfig) CreateRun() *Run {
 }
 
 func (run *Run) RunSonarScanner(ctx context.Context) error {
-	run.log.Debugf("Sonar-Scanner cli working directory: %s", run.scannerWorkingDir)
-	run.log.Debugf("Sonar-Scanner cli metadata file path: %s", run.metadataFilePath)
+	run.log.Debugf(
+		"Sonar-Scanner cli working directory: %s",
+		run.scannerWorkingDir,
+	)
+	run.log.Debugf(
+		"Sonar-Scanner cli metadata file path: %s",
+		run.metadataFilePath,
+	)
 
 	args := []string{
 		fmt.Sprintf(
@@ -89,7 +96,10 @@ func (run *Run) RunSonarScanner(ctx context.Context) error {
 	}
 
 	if run.projectFileLocation != "" {
-		run.log.Debugf("Sonar-Scanner cli project file location: %s", run.projectFileLocation)
+		run.log.Debugf(
+			"Sonar-Scanner cli project file location: %s",
+			run.projectFileLocation,
+		)
 
 		args = append(
 			args,
@@ -102,7 +112,9 @@ func (run *Run) RunSonarScanner(ctx context.Context) error {
 	return misc.RunCommand(run.log.WithField("prefix", "sonar-scanner-cli"), cmd)
 }
 
-func (run *Run) RetrieveLastAnalysisTaskStatus(ctx context.Context) (TaskStatus, error) {
+func (run *Run) RetrieveLastAnalysisTaskStatus(
+	ctx context.Context,
+) (TaskStatus, error) {
 	run.log.Infof("Using metadata file %s", run.metadataFilePath)
 
 	url, err := getTaskUrlFromFile(run.metadataFilePath)
@@ -115,7 +127,10 @@ func (run *Run) RetrieveLastAnalysisTaskStatus(ctx context.Context) (TaskStatus,
 	return run.retrieveTaskStatus(ctx, url)
 }
 
-func (run *Run) retrieveTaskStatus(ctx context.Context, url string) (TaskStatus, error) {
+func (run *Run) retrieveTaskStatus(
+	ctx context.Context,
+	url string,
+) (TaskStatus, error) {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -176,7 +191,11 @@ func getTaskUrl(reader io.Reader) (string, error) {
 	return "", errors.New("metadata file doesn't contain task url")
 }
 
-func requestTaskStatus(ctx context.Context, client *http.Client, url string) (TaskStatus, error) {
+func requestTaskStatus(
+	ctx context.Context,
+	client *http.Client,
+	url string,
+) (TaskStatus, error) {
 	request, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return TaskStatusUndefined, err
