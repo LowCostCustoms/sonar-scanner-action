@@ -3,6 +3,7 @@ module github.com/LowCostCustoms/sonar-scanner-action
 go 1.15
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/sirupsen/logrus v1.7.0

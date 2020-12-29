@@ -1,13 +1,14 @@
-package misc
+package command
 
 import (
 	"bufio"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os/exec"
+
+	"github.com/sirupsen/logrus"
 )
 
-func RunCommand(log *logrus.Entry, command *exec.Cmd) error {
+func Run(log *logrus.Entry, command *exec.Cmd) error {
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return err
