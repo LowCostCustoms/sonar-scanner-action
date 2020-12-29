@@ -208,9 +208,7 @@ func (r *Run) retrieveTaskStatus(ctx context.Context, url string) (TaskStatus, e
 
 		r.log.Debugf("Task status returned in the response %s", taskStatus)
 
-		if taskStatus == TaskStatusSuccess ||
-			taskStatus == TaskStatusCancelled ||
-			taskStatus == TaskStatusUndefined {
+		if taskStatus == TaskStatusSuccess || taskStatus == TaskStatusCancelled || taskStatus == TaskStatusUndefined {
 			return taskStatus, nil
 		}
 
@@ -272,18 +270,12 @@ func requestTaskStatus(ctx context.Context, client *http.Client, url string) (Ta
 
 func processTaskStatusResponse(response *http.Response) (TaskStatus, error) {
 	if response.StatusCode != http.StatusOK {
-		return TaskStatusUndefined, fmt.Errorf(
-			"unexpected response code %d",
-			response.StatusCode,
-		)
+		return TaskStatusUndefined, fmt.Errorf("unexpected response code %d", response.StatusCode)
 	}
 
 	contentType := response.Header.Get("content-type")
 	if contentType != "application/json" {
-		return TaskStatusUndefined, fmt.Errorf(
-			"unexpected response content-type '%s'",
-			contentType,
-		)
+		return TaskStatusUndefined, fmt.Errorf("unexpected response content-type '%s'", contentType)
 	}
 
 	responseBody, err := ioutil.ReadAll(response.Body)
