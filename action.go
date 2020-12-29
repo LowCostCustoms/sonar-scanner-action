@@ -22,19 +22,7 @@ func main() {
 		log.Fatalf("Failed to get the process environment: %s", err)
 	}
 
-	if env.SonarHostCert != "" {
-		log.Infof("Adding sonar host certificate to the trusted ca's list ...")
-
-		err = misc.AddTrustedCertificate(
-			context.Background(),
-			log.WithField("prefix", "add-certificate"),
-			env.SonarHostCert,
-			"",
-		)
-		if err != nil {
-			log.Fatalf("Failed to import the sonar host certificate: %s")
-		}
-	}
+	log.Level = env.LogLevel
 
 	sonarScannerConfig := &sonarscanner.RunConfig{
 		TlsSkipVerify:       true,
@@ -42,7 +30,7 @@ func main() {
 		ProjectFileLocation: env.ProjectFileLocation,
 		LogEntry:            log.WithField("prefix", "sonar-scanner"),
 	}
-	sonarScannerRun := sonarScannerConfig.CreateRun()
+	sonarScannerRun := sonarScannerConfig.NewRun()
 
 	log.Info("Running sonar-scanner-cli ...")
 	err = sonarScannerRun.RunSonarScanner(context.Background())

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/LowCostCustoms/sonar-scanner-action/internal/misc"
+	"github.com/LowCostCustoms/sonar-scanner-action/internal/properties"
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 )
@@ -25,6 +26,11 @@ var QualityGateWaitTimeout = errors.New("quality gate wait timeout")
 const (
 	defaultWaitTimeout    = 2 * time.Second
 	defaultRequestTimeout = 5 * time.Second
+)
+
+const (
+	defaultProjetFileLocation = "sonar-project.properties"
+	proxyListenAddress        = "localhost:6969"
 )
 
 type RunConfig struct {
@@ -45,7 +51,7 @@ type Run struct {
 	log                 *logrus.Entry
 }
 
-func (config *RunConfig) CreateRun() *Run {
+func (config *RunConfig) NewRun() *Run {
 	metadataFileName := config.MetadataFileName
 	if metadataFileName == "" {
 		metadataFileName = "report-task.txt"
@@ -84,15 +90,10 @@ func (run *Run) RunSonarScanner(ctx context.Context) error {
 			"-Dsonar.scanner.metadataFilePath=%s",
 			path.Join(run.scannerWorkingDir, run.metadataFilePath),
 		),
-	}
-
-	if run.sonarHostUrl != "" {
-		run.log.Debugf("Sonar-Scanner cli host url: %s", run.sonarHostUrl)
-
-		args = append(
-			args,
-			fmt.Sprintf("-Dsonar.host.url=%s", run.sonarHostUrl),
-		)
+		fmt.Sprintf(
+			"-Dsonar.host.url=http://%s",
+			proxyListenAddress,
+		),
 	}
 
 	if run.projectFileLocation != "" {
@@ -107,9 +108,29 @@ func (run *Run) RunSonarScanner(ctx context.Context) error {
 		)
 	}
 
+	// Evaluate the sonar host url either from the configuration or from the
+	// project properties.
+	sonarHostUrl, err := run.getSonarHostUrl()
+	if err != nil {
+		return err
+	}
+
+	// Run a reverse proxy and stop it upon the command is finished.
+	reverseProxyCtx, reverseProxyCancel := context.WithCancel(ctx)
+	defer reverseProxyCancel()
+	go run.runReverseProxy(
+		reverseProxyCtx,
+		run.log.WithField("prefix", "reverse-proxy"),
+		proxyListenAddress,
+		sonarHostUrl,
+	)
+
 	cmd := exec.CommandContext(ctx, "sonar-scanner", args...)
 
-	return misc.RunCommand(run.log.WithField("prefix", "sonar-scanner-cli"), cmd)
+	return misc.RunCommand(
+		run.log.WithField("prefix", "sonar-scanner-cli"),
+		cmd,
+	)
 }
 
 func (run *Run) RetrieveLastAnalysisTaskStatus(
@@ -125,6 +146,59 @@ func (run *Run) RetrieveLastAnalysisTaskStatus(
 	run.log.Infof("Using task result url %s", url)
 
 	return run.retrieveTaskStatus(ctx, url)
+}
+
+func (run *Run) getSonarHostUrl() (string, error) {
+	if run.sonarHostUrl != "" {
+		run.log.Debugf("Using sonar host url from env")
+		return run.sonarHostUrl, nil
+	}
+
+	projectFileLocation := run.projectFileLocation
+	if projectFileLocation == "" {
+		projectFileLocation = defaultProjetFileLocation
+	}
+
+	run.log.Debugf(
+		"Reading sonar host url from the project file '%s'",
+		projectFileLocation,
+	)
+
+	props, err := properties.ReadAllPropertiesFromFile(projectFileLocation)
+	if err != nil {
+		return "", err
+	}
+
+	sonarHostUrl := props["sonar.host.url"]
+	run.log.Debugf("Sonar host url is '%s'", sonarHostUrl)
+
+	if sonarHostUrl == "" {
+		return "", fmt.Errorf("sona host url is invalid")
+	}
+
+	return sonarHostUrl, nil
+}
+
+func (run *Run) runReverseProxy(
+	ctx context.Context,
+	logger *logrus.Entry,
+	listenAddress string,
+	sonarHostUrl string,
+) {
+	logger.Info("Starting a reverse proxy ...")
+
+	proxy, err := newSonarHostProxy(logger, listenAddress, sonarHostUrl)
+	if err != nil {
+		logger.Errorf("Failed to init a reverse proxy: %s", err)
+		return
+	}
+
+	if err := proxy.runWithContext(ctx); err != nil {
+		logger.Errorf("Failed to run the reverse proxy: %s", err)
+		return
+	}
+
+	logger.Infof("Reverse proxy stopped.")
 }
 
 func (run *Run) retrieveTaskStatus(
