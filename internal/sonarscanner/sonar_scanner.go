@@ -16,8 +16,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/LowCostCustoms/sonar-scanner-action/internal/properties"
-
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 )
@@ -145,7 +143,7 @@ func (c *RunFactory) getProjectProperties() (*projectProperties, error) {
 					props.sonarHostUrl = projectProps.sonarHostUrl
 				}
 			} else {
-				c.LogEntry.Error("Sonar scanner project file location %s points to a directory", c.ProjectFileLocation)
+				c.LogEntry.Errorf("Sonar scanner project file location %s points to a directory", c.ProjectFileLocation)
 			}
 		} else {
 			c.LogEntry.Errorf("Could not open sonar scanner project file %s: %s", c.ProjectFileLocation, err)
@@ -157,24 +155,6 @@ func (c *RunFactory) getProjectProperties() (*projectProperties, error) {
 	}
 
 	return props, nil
-}
-
-func (c *RunFactory) getSonarHostUrl() (string, error) {
-	if c.SonarHostUrl != "" {
-		return c.SonarHostUrl, nil
-	}
-
-	propertiesMap, err := properties.ReadAllPropertiesFromFile(c.ProjectFileLocation)
-	if err != nil {
-		return "", err
-	}
-
-	sonarHostUrl := propertiesMap["sonar.host.url"]
-	if sonarHostUrl == "" {
-		return "", fmt.Errorf("could not infer the sonar host url")
-	}
-
-	return sonarHostUrl, nil
 }
 
 func (r *Run) RunScanner(ctx context.Context) error {

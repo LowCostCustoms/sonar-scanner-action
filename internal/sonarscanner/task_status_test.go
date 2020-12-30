@@ -8,7 +8,7 @@ import (
 )
 
 func TestTaskStatusToString(t *testing.T) {
-	assert.Equal(t, fmt.Sprint(-1), "UNDEFINED")
+	assert.Equal(t, fmt.Sprint(TaskStatus(-1)), "UNDEFINED")
 	assert.Equal(t, fmt.Sprint(TaskStatusSuccess), "SUCCESS")
 	assert.Equal(t, fmt.Sprint(TaskStatusPending), "PENDING")
 	assert.Equal(t, fmt.Sprint(TaskStatusInProgress), "IN_PROGRESS")

@@ -3,7 +3,6 @@ package properties
 import (
 	"bufio"
 	"io"
-	"os"
 	"regexp"
 )
 
@@ -47,25 +46,4 @@ func (reader *PropertiesReader) Value() string {
 
 func (reader *PropertiesReader) Err() error {
 	return reader.scanner.Err()
-}
-
-func ReadAllProperties(reader io.Reader) (PropertiesMap, error) {
-	propertiesReader := NewReader(reader)
-	properties := make(PropertiesMap)
-	for propertiesReader.Scan() {
-		properties[propertiesReader.Key()] = propertiesReader.Value()
-	}
-
-	return properties, propertiesReader.Err()
-}
-
-func ReadAllPropertiesFromFile(fileName string) (PropertiesMap, error) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-
-	return ReadAllProperties(file)
 }
