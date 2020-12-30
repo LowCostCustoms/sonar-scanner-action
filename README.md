@@ -4,6 +4,24 @@ An action that runs sonar-scanner in a docker-container and retrieves the
 quality gate status, if needed. In the latter case if the quality gate fails
 the action fails as well.
 
+## Table of contents
+
+* [Usage](#usage)
+* [Action inputs](#action-inputs)
+  * [image](#image)
+  * [wait-for-quality-gate](#wait-for-quality-gate)
+  * [quality-gate-wait-timeout](#quality-gate-wait-timeout)
+  * [sonar-host-url](#sonar-host-url)
+  * [sonar-host-cert](#sonar-host-cert)
+  * [project-file-location](#project-file-location)
+  * [sources-mount-point](#sources-mount-point)
+  * [sources-location](#sources-location)
+  * [tls-skip-verify](#tls-skip-verify)
+  * [sonar-login](#sonar-login)
+  * [sonar-password](#sonar-password)
+  * [log-level](#log-level)
+* [Caveats](#caveats)
+
 ## Usage
 
 A workflow example:
