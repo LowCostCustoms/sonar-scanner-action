@@ -159,4 +159,4 @@ Determines the action output verbosity level. Should be one of "error",
 The file specified by the `project-file-location`, if any, should be located
 within the `sources-location` directory.
 
-SonarQube user authentication is not supported yet.
+Not sure if authentication works but lets pretend it does.
