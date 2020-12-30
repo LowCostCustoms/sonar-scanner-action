@@ -1,7 +1,7 @@
 # Sonar-Scanner Github Action
 
 An action that runs sonar-scanner in a docker-container and retrieves the
-quality gate status if needed. In the latter case if the quality gate fails
+quality gate status, if needed. In the latter case if the quality gate fails
 the action fails as well.
 
 ## Usage
@@ -53,7 +53,7 @@ jobs:
 
 **Default value**: "sonarsource/sonar-scanner-cli:latest"
 
-The name and tag of the docker image containing sonar-scanner-cli tool.
+The name and tag of the docker image containing the sonar-scanner-cli tool.
 
 ### wait-for-quality-gate
 
@@ -62,8 +62,8 @@ The name and tag of the docker image containing sonar-scanner-cli tool.
 If set to the "true" the quality gate staus will be polled after analysis is
 finished. If the corresponding analysis task doesn't finish within a time
 interval specified by the `quality-gate-wait-timeout` input or finishes with
-a failure the action run is considered failed. If you don't need that behavior
-set this input to "false".
+a failure the action run is considered failed. To disable this behavior set
+the value of this input to the "false".
 
 ### quality-gate-wait-timeout
 
@@ -78,8 +78,7 @@ example "20s" or "1h".
 
 **Default value**: ""
 
-The url where the SonarQube server is located. If value is empty or not set, the
-`project-file-location` variable must be set!
+The url where the SonarQube server is located.
 
 ### sonar-host-cert
 
@@ -105,7 +104,7 @@ are mounted in the sonar-scanner docker container.
 
 **Default value**: the current github workspace path
 
-The place where the project sources are located. Should be the absolute path.
+The place where the project sources are located. Should be an absolute path.
 
 ### tls-skip-verify
 
@@ -114,8 +113,16 @@ The place where the project sources are located. Should be the absolute path.
 If set to the "true", sonar host certificate validation will be skipped. It's
 not recommended to use this option, however it's still here for some reasons...
 
+### log-level
+
+**Default value**: "info"
+
+Determines the action output verbosity level. Should be one of "error",
+"warning", "info" or "debug".
+
 ## Caveats
 
 The file specified by the `project-file-location`, if any, should be located
 within the `sources-location` directory.
 
+SonarQube user authentication is not supported yet.
