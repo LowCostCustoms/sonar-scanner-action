@@ -28,6 +28,8 @@ jobs:
         log-level: 'info'
         tls-skip-verify: 'false'
         sources-location: ${{ github.workspace }}
+        sonar-login: 'login'
+        sonar-password: 'password'
     # ...
 ```
 
@@ -112,6 +114,20 @@ The place where the project sources are located. Should be an absolute path.
 
 If set to the "true", sonar host certificate validation will be skipped. It's
 not recommended to use this option, however it's still here for some reasons...
+
+### sonar-login
+
+**Default value**: ""
+
+Either the login of a SonarQube account that has permissions to run analysis
+and retrieve analysis task results or an authentication token associated with
+a such account.
+
+### sonar-password
+
+**Default value**: ""
+
+Along with the `sonar-login` defines the sonar host authentication credentials.
 
 ### log-level
 
