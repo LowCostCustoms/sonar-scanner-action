@@ -35,26 +35,28 @@ const (
 )
 
 type RunFactory struct {
-	SonarHostUrl        string
-	SonarHostCert       string
-	ScannerWorkingDir   string
-	TlsSkipVerify       bool
-	MetadataFileName    string
-	ProjectFileLocation string
-	SonarLogin          string
-	SonarPassword       string
-	LogEntry            *logrus.Entry
+	SonarHostUrl         string
+	SonarHostCert        string
+	ScannerWorkingDir    string
+	TlsSkipVerify        bool
+	MetadataFileName     string
+	ProjectFileLocation  string
+	SonarLogin           string
+	SonarPassword        string
+	ScannerVerboseOutput bool
+	LogEntry             *logrus.Entry
 }
 
 type Run struct {
-	sonarHostUrl        string
-	scannerWorkingDir   string
-	metadataFilePath    string
-	projectFileLocation string
-	sonarLogin          string
-	sonarPassword       string
-	tlsConfig           *tls.Config
-	log                 *logrus.Entry
+	sonarHostUrl         string
+	scannerWorkingDir    string
+	metadataFilePath     string
+	projectFileLocation  string
+	sonarLogin           string
+	sonarPassword        string
+	scannerVerboseOutput bool
+	tlsConfig            *tls.Config
+	log                  *logrus.Entry
 }
 
 func (c *RunFactory) NewRun() (*Run, error) {
@@ -84,14 +86,15 @@ func (c *RunFactory) NewRun() (*Run, error) {
 	}
 
 	return &Run{
-		sonarHostUrl:        props.sonarHostUrl,
-		scannerWorkingDir:   c.ScannerWorkingDir,
-		metadataFilePath:    path.Join(scannerWorkingDir, metadataFileName),
-		projectFileLocation: projectFileLocation,
-		tlsConfig:           tlsConfig,
-		sonarLogin:          props.login,
-		sonarPassword:       props.password,
-		log:                 c.LogEntry,
+		sonarHostUrl:         props.sonarHostUrl,
+		scannerWorkingDir:    c.ScannerWorkingDir,
+		metadataFilePath:     path.Join(scannerWorkingDir, metadataFileName),
+		projectFileLocation:  projectFileLocation,
+		tlsConfig:            tlsConfig,
+		sonarLogin:           props.login,
+		sonarPassword:        props.password,
+		scannerVerboseOutput: c.ScannerVerboseOutput,
+		log:                  c.LogEntry,
 	}, nil
 }
 
@@ -244,6 +247,12 @@ func (r *Run) getSonarScannerArgs() []string {
 		if r.sonarPassword != "" {
 			args = append(args, fmt.Sprintf("-Dsonar.password=%s", r.sonarPassword))
 		}
+	}
+
+	if r.scannerVerboseOutput {
+		r.log.Debugf("Using sonar-scanner verbose output option")
+
+		args = append(args, "-X")
 	}
 
 	return args
