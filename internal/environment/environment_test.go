@@ -21,6 +21,8 @@ func TestGet(t *testing.T) {
 	assert.Equal(t, e.WaitForQualityGate, true)
 	assert.Equal(t, e.QualityGateWaitTimeout, 10*time.Second)
 	assert.Equal(t, e.LogLevel, logrus.WarnLevel)
+	assert.Equal(t, e.SonarLogin, "sonar-login")
+	assert.Equal(t, e.SonarPassword, "sonar-password")
 }
 
 func TestGetParseFailed(t *testing.T) {
@@ -52,4 +54,6 @@ func setEnvironment() {
 	os.Setenv("WAIT_FOR_QUALITY_GATE", "true")
 	os.Setenv("QUALITY_GATE_WAIT_TIMEOUT", "10s")
 	os.Setenv("LOG_LEVEL", "warning")
+	os.Setenv("SONAR_LOGIN", "sonar-login")
+	os.Setenv("SONAR_PASSWORD", "sonar-password")
 }

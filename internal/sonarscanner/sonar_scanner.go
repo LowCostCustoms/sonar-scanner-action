@@ -41,6 +41,8 @@ type RunFactory struct {
 	TlsSkipVerify       bool
 	MetadataFileName    string
 	ProjectFileLocation string
+	SonarLogin          string
+	SonarPassword       string
 	LogEntry            *logrus.Entry
 }
 
@@ -49,6 +51,8 @@ type Run struct {
 	scannerWorkingDir   string
 	metadataFilePath    string
 	projectFileLocation string
+	sonarLogin          string
+	sonarPassword       string
 	tlsConfig           *tls.Config
 	log                 *logrus.Entry
 }
@@ -69,7 +73,7 @@ func (c *RunFactory) NewRun() (*Run, error) {
 		projectFileLocation = defaultProjectFileLocation
 	}
 
-	sonarHostUrl, err := c.getSonarHostUrl()
+	props, err := c.getProjectProperties()
 	if err != nil {
 		return nil, err
 	}
@@ -80,11 +84,13 @@ func (c *RunFactory) NewRun() (*Run, error) {
 	}
 
 	return &Run{
-		sonarHostUrl:        sonarHostUrl,
+		sonarHostUrl:        props.sonarHostUrl,
 		scannerWorkingDir:   c.ScannerWorkingDir,
 		metadataFilePath:    path.Join(scannerWorkingDir, metadataFileName),
 		projectFileLocation: projectFileLocation,
 		tlsConfig:           tlsConfig,
+		sonarLogin:          props.login,
+		sonarPassword:       props.password,
 		log:                 c.LogEntry,
 	}, nil
 }
@@ -105,6 +111,50 @@ func (c *RunFactory) getTlsClientConfig() (*tls.Config, error) {
 		InsecureSkipVerify: c.TlsSkipVerify,
 		RootCAs:            certPool,
 	}, nil
+}
+
+func (c *RunFactory) getProjectProperties() (*projectProperties, error) {
+	props := &projectProperties{
+		sonarHostUrl: c.SonarHostUrl,
+		login:        c.SonarLogin,
+		password:     c.SonarPassword,
+	}
+
+	if c.ProjectFileLocation != "" {
+		if stat, err := os.Stat(c.ProjectFileLocation); err == nil {
+			if !stat.IsDir() {
+				c.LogEntry.Debugf("Reading project properties from %s", c.ProjectFileLocation)
+
+				projectProps, err := readProjectProperties(c.ProjectFileLocation)
+				if err != nil {
+					return nil, err
+				}
+
+				if props.login == "" {
+					c.LogEntry.Debugf("Using sonar scanner auth credentials from the project file")
+
+					props.login = projectProps.login
+					props.password = projectProps.password
+				}
+
+				if props.sonarHostUrl == "" {
+					c.LogEntry.Debugf("Using sonar scanner host from the project file")
+
+					props.sonarHostUrl = projectProps.sonarHostUrl
+				}
+			} else {
+				c.LogEntry.Error("Sonar scanner project file location %s points to a directory", c.ProjectFileLocation)
+			}
+		} else {
+			c.LogEntry.Errorf("Could not open sonar scanner project file %s: %s", c.ProjectFileLocation, err)
+		}
+	}
+
+	if props.sonarHostUrl == "" {
+		return nil, fmt.Errorf("could not infer the sonar host url")
+	}
+
+	return props, nil
 }
 
 func (c *RunFactory) getSonarHostUrl() (string, error) {
@@ -188,6 +238,14 @@ func (r *Run) getSonarScannerArgs() []string {
 		args = append(args, fmt.Sprintf("-Dproject.settings=%s", r.projectFileLocation))
 	}
 
+	if r.sonarLogin != "" {
+		args = append(args, fmt.Sprintf("-Dsonar.login=%s", r.sonarLogin))
+
+		if r.sonarPassword != "" {
+			args = append(args, fmt.Sprintf("-Dsonar.password=%s", r.sonarPassword))
+		}
+	}
+
 	return args
 }
 
@@ -201,7 +259,7 @@ func (r *Run) retrieveTaskStatus(ctx context.Context, url string) (TaskStatus, e
 	for {
 		r.log.Debugf("Reading task status from the server")
 
-		taskStatus, err := requestTaskStatus(ctx, client, url)
+		taskStatus, err := r.requestTaskStatus(ctx, client, url)
 		if err != nil {
 			return TaskStatusUndefined, err
 		}
@@ -221,6 +279,32 @@ func (r *Run) retrieveTaskStatus(ctx context.Context, url string) (TaskStatus, e
 			return TaskStatusUndefined, QualityGateWaitTimeout
 		}
 	}
+}
+
+func (r *Run) requestTaskStatus(ctx context.Context, client *http.Client, url string) (TaskStatus, error) {
+	request, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return TaskStatusUndefined, err
+	}
+
+	if r.sonarLogin != "" {
+		r.log.Debugf("Using basic auth")
+
+		request.SetBasicAuth(r.sonarLogin, r.sonarPassword)
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		if err == context.Canceled {
+			return TaskStatusUndefined, QualityGateWaitTimeout
+		}
+
+		return TaskStatusUndefined, err
+	}
+
+	defer response.Body.Close()
+
+	return processTaskStatusResponse(response)
 }
 
 func getTaskUrlFromFile(fileName string) (string, error) {
@@ -246,26 +330,6 @@ func getTaskUrl(reader io.Reader) (string, error) {
 	}
 
 	return "", errors.New("metadata file doesn't contain task url")
-}
-
-func requestTaskStatus(ctx context.Context, client *http.Client, url string) (TaskStatus, error) {
-	request, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return TaskStatusUndefined, err
-	}
-
-	response, err := client.Do(request)
-	if err != nil {
-		if err == context.Canceled {
-			return TaskStatusUndefined, QualityGateWaitTimeout
-		}
-
-		return TaskStatusUndefined, err
-	}
-
-	defer response.Body.Close()
-
-	return processTaskStatusResponse(response)
 }
 
 func processTaskStatusResponse(response *http.Response) (TaskStatus, error) {

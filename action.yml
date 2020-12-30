@@ -66,6 +66,16 @@ inputs:
       If true skips sonar host TLS certificate verification.
     required: false
     default: false
+  sonar-login:
+    description: -|
+      An authentication token or SonarQube user login.
+    required: false
+    default: ""
+  sonar-password:
+    description: -|
+      The password for the account associated with the `sonar-login`.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -82,5 +92,7 @@ runs:
         SOURCES_LOCATION: ${{ inputs.sources-location }}
         LOG_LEVEL: ${{ inputs.log-level }}
         TLS_SKIP_VERIFY: ${{ inputs.tls-skip-verify }}
+        SONAR_LOGIN: ${{ inputs.sonar-login }}
+        SONAR_PASSWORD: ${{ inputs.sonar-password }}
       working-directory: ${{ github.action_path }}
       run: ${{ github.action_path }}/action-entrypoint.sh

@@ -35,6 +35,8 @@ func main() {
 		SonarHostCert:       env.SonarHostCert,
 		TlsSkipVerify:       env.TlsSkipVerify,
 		ProjectFileLocation: env.ProjectFileLocation,
+		SonarLogin:          env.SonarLogin,
+		SonarPassword:       env.SonarPassword,
 		LogEntry:            log.WithField("prefix", "sonar-scanner"),
 	}
 	run, err := runFactory.NewRun()
