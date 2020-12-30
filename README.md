@@ -8,18 +8,18 @@ the action fails as well.
 
 * [Usage](#usage)
 * [Action inputs](#action-inputs)
-  * [image](#image)
-  * [wait-for-quality-gate](#wait-for-quality-gate)
-  * [quality-gate-wait-timeout](#quality-gate-wait-timeout)
-  * [sonar-host-url](#sonar-host-url)
-  * [sonar-host-cert](#sonar-host-cert)
-  * [project-file-location](#project-file-location)
-  * [sources-mount-point](#sources-mount-point)
-  * [sources-location](#sources-location)
-  * [tls-skip-verify](#tls-skip-verify)
-  * [sonar-login](#sonar-login)
-  * [sonar-password](#sonar-password)
-  * [log-level](#log-level)
+  * [`image`](#image)
+  * [`wait-for-quality-gate`](#wait-for-quality-gate)
+  * [`quality-gate-wait-timeout`](#quality-gate-wait-timeout)
+  * [`sonar-host-url`](#sonar-host-url)
+  * [`sonar-host-cert`](#sonar-host-cert)
+  * [`project-file-location`](#project-file-location)
+  * [`sources-mount-point`](#sources-mount-point)
+  * [`sources-location`](#sources-location)
+  * [`tls-skip-verify`](#tls-skip-verify)
+  * [`sonar-login`](#sonar-login)
+  * [`sonar-password`](#sonar-password)
+  * [`log-level`](#log-level)
 * [Caveats](#caveats)
 
 ## Usage
@@ -29,12 +29,13 @@ A workflow example:
 ```yaml
 # ...
 jobs:
+  # ...
   sonar-scanner-job:
-    runs-on: ubuntu-latest
+    # ...
     steps:
     # ...
     - name: Run sonar-scanner
-      uses: LowCostCustoms/sonar-scanner-action@v0.0.2
+      uses: LowCostCustoms/sonar-scanner-action@v0.0.1
       with:
         image: sonarsource/sonar-scanner-cli:4.4
         wait-for-quality-gate: 'true'
@@ -56,12 +57,13 @@ Minimal configuration:
 ```yaml
 # ...
 jobs:
+  # ...
   sonar-scanner-job:
-    runs-on: ubuntu-latest
+    # ...
     steps:
     # ...
     - name: Run sonar-scanner
-      uses: LowCostCustoms/sonar-scanner-action@v0.0.2
+      uses: LowCostCustoms/sonar-scanner-action@v0.0.1
       with:
         project-file-location: sonar-project.properties
     # ...
