@@ -16,7 +16,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/LowCostCustoms/sonar-scanner-action/internal/command"
 	"github.com/LowCostCustoms/sonar-scanner-action/internal/properties"
 
 	"github.com/sirupsen/logrus"
@@ -188,7 +187,7 @@ func (r *Run) RunScanner(ctx context.Context) error {
 
 	cmd := exec.CommandContext(ctx, "sonar-scanner", r.getSonarScannerArgs()...)
 
-	return command.Run(r.log.WithField("prefix", "sonar-scanner-cli"), cmd)
+	return runSonarScanner(r.log.WithField("prefix", "sonar-scanner-cli"), cmd)
 }
 
 func (r *Run) RetrieveLastAnalysisTaskStatus(ctx context.Context) (TaskStatus, error) {
