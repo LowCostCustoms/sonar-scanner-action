@@ -17,6 +17,8 @@ type Environment struct {
 	QualityGateWaitTimeout time.Duration `env:"QUALITY_GATE_WAIT_TIMEOUT" envDefault:"2m"`
 	LogLevel               logrus.Level  `env:"LOG_LEVEL" envDefault:"info"`
 	TlsSkipVerify          bool          `env:"TLS_SKIP_VERIFY" envDefault:"false"`
+	SonarLogin             string        `env:"SONAR_LOGIN" envDefault:""`
+	SonarPassword          string        `env:"SONAR_PASSWORD" envDefault:""`
 }
 
 func Get() (*Environment, error) {

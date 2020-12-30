@@ -24,6 +24,7 @@ func main() {
 	}
 
 	log.Level = env.LogLevel
+	log.Infof("Log level set to %s", env.LogLevel)
 
 	if env.TlsSkipVerify {
 		log.Warn("Sonar host certificate verification has beed disabled")
@@ -31,11 +32,14 @@ func main() {
 
 	// Create a new sonar-scanner run.
 	runFactory := &sonarscanner.RunFactory{
-		SonarHostUrl:        env.SonarHostUrl,
-		SonarHostCert:       env.SonarHostCert,
-		TlsSkipVerify:       env.TlsSkipVerify,
-		ProjectFileLocation: env.ProjectFileLocation,
-		LogEntry:            log.WithField("prefix", "sonar-scanner"),
+		SonarHostUrl:         env.SonarHostUrl,
+		SonarHostCert:        env.SonarHostCert,
+		TlsSkipVerify:        env.TlsSkipVerify,
+		ProjectFileLocation:  env.ProjectFileLocation,
+		SonarLogin:           env.SonarLogin,
+		SonarPassword:        env.SonarPassword,
+		ScannerVerboseOutput: env.LogLevel == logrus.DebugLevel,
+		LogEntry:             log.WithField("prefix", "sonar-scanner"),
 	}
 	run, err := runFactory.NewRun()
 	if err != nil {

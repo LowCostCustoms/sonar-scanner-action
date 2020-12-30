@@ -18,6 +18,8 @@ docker run \
     -e QUALITY_GATE_WAIT_TIMEOUT \
     -e LOG_LEVEL \
     -e TLS_SKIP_VERIFY \
+    -e SONAR_LOGIN \
+    -e SONAR_PASSWORD \
     -w "$SOURCES_MOUNT_POINT" \
     -v "$SOURCES_LOCATION:$SOURCES_MOUNT_POINT" \
     $image_name
