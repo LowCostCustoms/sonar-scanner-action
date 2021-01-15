@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"os/exec"
+	"regexp"
 
 	"github.com/sirupsen/logrus"
 )
@@ -30,8 +31,30 @@ func runSonarScanner(log *logrus.Entry, cmd *exec.Cmd) error {
 }
 
 func redirectOutput(log *logrus.Entry, defaultLevel logrus.Level, reader io.Reader) {
+	rx := regexp.MustCompile("^(INFO|WARN|ERRO|DEBU)")
+
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		log.Logln(defaultLevel, scanner.Text())
+		line := scanner.Text()
+		matches := rx.FindStringSubmatch(line)
+
+		level := defaultLevel
+		if matches != nil {
+			switch matches[1] {
+			case "WARN":
+				level = logrus.WarnLevel
+				break
+			case "INFO":
+				level = logrus.InfoLevel
+				break
+			case "DEBU":
+				level = logrus.DebugLevel
+				break
+			case "ERRO":
+				level = logrus.ErrorLevel
+				break
+			}
+		}
+		log.Logln(level, line)
 	}
 }
