@@ -27,7 +27,7 @@ func main() {
 	log.Infof("Log level set to %s", env.LogLevel)
 
 	if env.TlsSkipVerify {
-		log.Warn("Sonar host certificate verification has beed disabled")
+		log.Warn("Sonar host certificate verification was disabled")
 	}
 
 	// Create a new sonar-scanner run.

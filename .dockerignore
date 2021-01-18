@@ -8,3 +8,4 @@ Dockerfile
 bin
 action-entrypoint.sh
 action.yml
+run.sh

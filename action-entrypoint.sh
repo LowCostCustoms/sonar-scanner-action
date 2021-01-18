@@ -7,7 +7,7 @@ echo "::group::Building docker image"
 docker build --build-arg BASE_IMAGE=$IMAGE -t $image_name .
 echo "::endgroup::"
 
-echo "::group::Runing sonar-scanner"
+echo "::group::Running sonar-scanner"
 docker run \
     --rm \
     -t \
