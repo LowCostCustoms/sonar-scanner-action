@@ -52,9 +52,6 @@ func parseTaskStatus(status string) (TaskStatus, error) {
 	case taskStatusFailedStr:
 		return TaskStatusFailed, nil
 	default:
-		return TaskStatusUndefined, fmt.Errorf(
-			"unexpected task status '%s'",
-			status,
-		)
+		return TaskStatusUndefined, fmt.Errorf("unexpected task status '%s'", status)
 	}
 }

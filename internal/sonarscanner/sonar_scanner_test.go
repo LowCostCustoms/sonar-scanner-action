@@ -68,9 +68,7 @@ func TestProcessTaskStatusResponse(t *testing.T) {
 			reader: strings.NewReader(
 				`
                 {
-                    "task": {
-                        "status": "IN_PROGRESS"
-                    }
+                    "message": "ok"
                 }
                 `,
 			),
@@ -80,10 +78,10 @@ func TestProcessTaskStatusResponse(t *testing.T) {
 		},
 	}
 
-	status, err := processTaskStatusResponse(response)
+	json, err := processResponse(response)
 
 	assert.Nil(t, err)
-	assert.Equal(t, status, TaskStatusInProgress)
+	assert.Equal(t, "ok", json.Get("message").Str)
 }
 
 func TestProcessTaskStatusResponseWithInvalidStatus(t *testing.T) {
@@ -93,9 +91,7 @@ func TestProcessTaskStatusResponseWithInvalidStatus(t *testing.T) {
 			reader: strings.NewReader(
 				`
                 {
-                    "task": {
-                        "status": "IN_PROGRESS"
-                    }
+                    "message": "not ok"
                 }
                 `,
 			),
@@ -105,10 +101,9 @@ func TestProcessTaskStatusResponseWithInvalidStatus(t *testing.T) {
 		},
 	}
 
-	status, err := processTaskStatusResponse(response)
+	_, err := processResponse(response)
 
 	assert.NotNil(t, err)
-	assert.Equal(t, status, TaskStatusUndefined)
 }
 
 func TestProcessTaskStatusResponseWithInvalidContentType(t *testing.T) {
@@ -122,35 +117,9 @@ func TestProcessTaskStatusResponseWithInvalidContentType(t *testing.T) {
 		},
 	}
 
-	status, err := processTaskStatusResponse(response)
+	_, err := processResponse(response)
 
 	assert.NotNil(t, err)
-	assert.Equal(t, status, TaskStatusUndefined)
-}
-
-func TestProcessTaskStatusResponseWithInvalidResponse(t *testing.T) {
-	response := &http.Response{
-		StatusCode: 200,
-		Body: &testReader{
-			reader: strings.NewReader(
-				`
-                {
-                    "task": {
-                        "noStatus": "error"
-                    }
-                }
-                `,
-			),
-		},
-		Header: http.Header{
-			"Content-Type": {"application/json"},
-		},
-	}
-
-	status, err := processTaskStatusResponse(response)
-
-	assert.NotNil(t, err)
-	assert.Equal(t, status, TaskStatusUndefined)
 }
 
 func TestGetTaskUrlFromFile(t *testing.T) {
@@ -323,4 +292,10 @@ func TestGetSonarScannerArgs(t *testing.T) {
 	assert.Contains(t, args, "-Dsonar.working.directory=/opt/")
 	assert.Contains(t, args, "-Dsonar.scanner.metadataFilePath=/opt/mfp")
 	assert.Contains(t, args, "-Dsonar.host.url=http://localhost:6969")
+}
+
+func TestGetApiUrl(t *testing.T) {
+	assert.Equal(t, "http://host/api/url/", getApiUrl("http://host/", "/api/url/"))
+	assert.Equal(t, "http://host/api/url", getApiUrl("http://host", "api/url"))
+	assert.Equal(t, "http://host/api/url", getApiUrl("http://host/", "api/url"))
 }

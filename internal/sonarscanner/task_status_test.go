@@ -36,11 +36,7 @@ func TestParseTaskStatusInvalidInput(t *testing.T) {
 	assert.Equal(t, status, TaskStatusUndefined)
 }
 
-func assertTaskStatusParsedAs(
-	t *testing.T,
-	statusString string,
-	expectedStatus TaskStatus,
-) {
+func assertTaskStatusParsedAs(t *testing.T, statusString string, expectedStatus TaskStatus) {
 	status, err := parseTaskStatus(statusString)
 
 	assert.Nil(t, err)

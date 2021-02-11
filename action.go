@@ -55,20 +55,28 @@ func main() {
 
 	// Wait for the analysis task result if needed.
 	if env.WaitForQualityGate {
-		log.Info("Retrieving the analysis task status ...")
+		log.Info("Retrieving the project analysis status ...")
 
 		ctx, cancel := context.WithTimeout(context.Background(), env.QualityGateWaitTimeout)
 		defer cancel()
 
-		status, err := run.RetrieveLastAnalysisTaskStatus(ctx)
+		status, err := run.RetrieveProjectanalysisStatus(ctx)
 		if err != nil {
 			log.Fatalf("Failed to retrieve the task status: %s", err)
 		}
 
-		if status != sonarscanner.TaskStatusSuccess {
-			log.Fatalf("The analysis task failed with the status %s", status)
+		taskStatus := status.TaskStatus
+		if taskStatus != sonarscanner.TaskStatusSuccess {
+			log.Fatalf("Analysis task failed with the status '%s'", taskStatus)
 		}
 
-		log.Infof("The analysis task finished with the status %s", status)
+		analysisStatus := status.AnalysisStatus
+		if analysisStatus == sonarscanner.AnalysisStatusError {
+			log.Fatalf("Quality gate failed with the status '%s'", analysisStatus)
+		}
+
+		log.Infof("Quality gate status '%s'", analysisStatus)
 	}
+
+	log.Infof("Done")
 }
